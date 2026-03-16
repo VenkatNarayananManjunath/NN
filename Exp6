@@ -1,0 +1,51 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+# Sample dataset
+sentences = ["i love this movie", "this movie is bad"]
+labels = torch.tensor([1,0]).float()
+
+# Vocabulary
+words = set(" ".join(sentences).split())
+word2idx = {w:i+1 for i,w in enumerate(words)}
+
+# Encode sentences
+def encode(s):
+    return [word2idx[w] for w in s.split()]
+
+X = [encode(s) for s in sentences]
+# Padding
+max_len = 5
+X = [x + [0]*(max_len-len(x)) for x in X]
+X = torch.tensor(X)
+
+# RNN Model
+class SimpleRNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.embedding = nn.Embedding(len(word2idx)+1,10)
+        self.rnn = nn.RNN(10,8,batch_first=True)
+        self.fc = nn.Linear(8,1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self,x):
+        x = self.embedding(x)
+        out,h = self.rnn(x)
+        out = self.fc(h.squeeze(0))
+        return self.sigmoid(out)
+
+model = SimpleRNN()
+criterion = nn.BCELoss()
+optimizer = optim.Adam(model.parameters(),lr=0.01)
+
+# Training
+for epoch in range(100):
+    output = model(X).squeeze()
+    loss = criterion(output,labels)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+print("Training complete")
+print("Prediction:",model(X).detach())
